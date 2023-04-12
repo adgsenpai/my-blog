@@ -1,0 +1,213 @@
+---
+title: NGINX Flask server
+date: '2023-04-12'
+tags: ['NGINX', 'Flask', 'Python', 'Server']
+draft: false
+summary: 'How to set up a Flask server with NGINX'
+---
+
+# NGINX Flask server
+
+## Introduction
+
+This is a tutorial on how to set up a Flask server with NGINX. 
+
+Let us denote an `App`. This `App` is a Flask application that we want to serve with NGINX. The `App` is located in the directory `/home/user/app`.
+
+```python
+from flask import Flask
+app = Flask(__name__)
+
+@app.route("/")
+def hello():
+    return "<h1 style='color:blue'>Hello There!</h1>"
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0')
+```
+
+The `App` is running on port `5000`. We want to serve this `App` with NGINX on port `80`.
+
+Sometimes Linux distros come with a firewall. We need to open port `80` for NGINX to work and `5000` for the `App` to work.
+
+```bash
+sudo ufw allow 80
+sudo ufw allow 5000
+```
+
+You may visit the `App` at `http://localhost:5000`
+
+## Installing Gunicorn
+
+Gunicorn is a Python WSGI HTTP Server for UNIX. It is a pre-fork worker model. The Gunicorn server is broadly compatible with various web frameworks, simply implemented, light on server resources, and fairly speedy.
+
+```bash
+pip install gunicorn
+```
+
+### Running the app with Gunicorn
+
+```bash
+gunicorn --bind 0.0.0.0:5000 app:app
+```
+
+Now that we have Gunicorn installed, we can run the `App` with Gunicorn. We can visit the `App` at `http://localhost:5000`
+
+## Setting up a systemd service
+
+We can set up a systemd service to run the `App` with Gunicorn. This will allow us to run the `App` as a service.
+
+```bash
+sudo nano /etc/systemd/system/app.service
+```
+
+```bash
+[Unit]
+Description=Gunicorn instance to serve app
+After=network.target
+
+[Service]
+User=user
+Group=www-data
+WorkingDirectory=/home/user/app
+Environment="PATH=/home/user/app/venv/bin"
+ExecStart=gunicorn --workers 3 --bind localhost:5000 app:app
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Starting the service
+
+You can start the service with the following command.
+
+```bash
+sudo systemctl start app
+```
+
+### Enabling the service
+
+You can enable the service with the following command. This will start the service on boot.
+
+```bash
+sudo systemctl enable app
+```
+
+### Checking the status of the service
+
+You can check the status of the service with the following command.
+
+```bash
+sudo systemctl status app
+```
+
+### Stopping the service
+
+```bash
+sudo systemctl stop app
+```
+
+## Installing NGINX
+
+To install NGINX, run the following command.
+
+```bash
+sudo apt install nginx
+```
+
+### Configuring NGINX
+
+Using the nano editor, open the file `/etc/nginx/sites-available/default`
+
+```bash
+sudo nano /etc/nginx/sites-available/default
+```
+
+With nano editor, press `Ctrl + W` and type `server_name`. This will take you to the line `server_name _;`. Replace `_` with `localhost`. This will allow you to visit the `App` at `http://localhost`
+
+```bash
+server {
+    listen 80;
+    server_name localhost;
+
+    location / {    
+        proxy_pass http://localhost:5000;
+    }
+}
+```
+
+### Restarting NGINX
+
+```bash
+sudo systemctl restart nginx
+```
+
+### Checking the status of NGINX
+
+```bash
+sudo systemctl status nginx
+```
+
+### Checking the NGINX configuration
+
+```bash
+sudo nginx -t
+```
+
+Now that we have NGINX installed and configured, we can visit the `App` at `http://localhost`
+
+What is missing is the SSL certificate. We can use Let's Encrypt to get a free SSL certificate.
+
+## Installing Certbot
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+```
+
+### Getting the SSL certificate for the domain example.com
+
+```bash
+sudo certbot --nginx -d example.com -d www.example.com
+```
+
+### Renewing the SSL certificate
+
+```bash
+sudo certbot renew --dry-run
+```
+
+### Checking the status of the SSL certificate
+
+```bash
+sudo certbot certificates
+```
+
+### Checking the SSL certificate expiration date
+
+```bash
+sudo certbot certificates | grep Expiry
+```
+
+### Checking the SSL certificate renewal date
+
+```bash
+sudo certbot certificates | grep Renew
+```
+
+But now we have an issue the certificate will expire in 90 days. We need to renew the certificate every 90 days. We can automate this process with a cron job.
+
+## Setting up a cron job
+
+```bash
+sudo crontab -e
+```
+
+```bash
+0 0 1 * * sudo certbot renew
+```
+
+This will run the command `sudo certbot renew` every first day of the month at midnight.
+
+## Conclusion
+
+We have set up a Flask server with NGINX. We have also set up a cron job to renew the SSL certificate every 90 days. This will allow you to run your website on a cloud server for free or even a local server.
