@@ -14,7 +14,12 @@ const ContentSecurityPolicy = `
   connect-src *;
   font-src 'self';
   frame-src giscus.app
+  
 `
+
+
+
+
 
 const securityHeaders = [
   // https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
@@ -59,6 +64,7 @@ const securityHeaders = [
  **/
 module.exports = () => {
   const plugins = [withContentlayer, withBundleAnalyzer]
+
   return plugins.reduce((acc, next) => next(acc), {
     reactStrictMode: true,
     pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
@@ -72,6 +78,16 @@ module.exports = () => {
           headers: securityHeaders,
         },
       ]
+    },
+    images: {
+      remotePatterns: [
+        {
+          protocol: 'https',
+          hostname: 'avatars.githubusercontent.com',
+          port: '',
+          pathname: '/u/:id',
+        },
+      ],
     },
     webpack: (config, options) => {
       config.module.rules.push({
