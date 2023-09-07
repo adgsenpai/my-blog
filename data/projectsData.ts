@@ -32,14 +32,6 @@ const projectsData = [
     imgSrc: '/static/images/rm.png',
     href: 'https://rahnmonitor.co.za',
   },
-  {
-    title: 'ZondoScan',
-    description: `Zondo Scan. Ensure that your clients are not implicated in State Capture by the Zondo Commission. Only Vol. 1: South African Airways and its Associated ...`,
-    imgSrc: '/static/images/searchanimation.gif',
-    href: 'https://zondoscan.co.za' 
-  },
-
-
 ]
 
 export default projectsData
