@@ -8,7 +8,7 @@ const siteMetadata = {
   description: 'ADGSTUDIOS Blog',
   language: 'en-us',
   theme: 'system', // system, dark or light
-  siteUrl: 'https://blog.adgstudios.co.za/',
+  siteUrl: 'https://blogs.adgstudios.co.za/',
   siteRepo: 'https://github.com/adgsenpai/ADGSTUDIOSBLOG',
   siteLogo: '/static/images/favicon.ico',
   image: '/static/images/avatar.png',
