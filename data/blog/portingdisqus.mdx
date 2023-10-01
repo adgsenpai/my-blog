@@ -1,0 +1,106 @@
+---
+title: Porting Disqus to Animeflix Next.js
+date: '2023-10-01'
+tags: ['next.js', 'disqus', 'animeflix']
+draft: false
+summary: 'Porting Disqus to Animeflix Next.js'
+---
+
+
+# Porting Disqus to Animeflix Next.js
+ 
+![Next.js](https://nextjs.org/static/favicon/favicon.ico)
+
+The world of web development is constantly evolving, and as a software engineer and owner of ADGSTUDIOS, I'm always looking for ways to enhance user engagement on my websites. In this article, I'll walk you through the process of porting Disqus, the popular commenting system, to Animeflix using Next.js. This integration allows for dynamic and interactive comments on your Next.js-based website.
+
+## Prerequisites
+
+Before we dive into the code, make sure you have the following:
+
+- A Next.js project set up and running.
+- An Animeflix website or a suitable webpage where you want to integrate Disqus.
+
+## Getting Started
+
+Let's start by creating a reusable React component for Disqus comments in Next.js. This component will dynamically load Disqus based on the current route and identifier.
+
+```jsx
+import React, { useEffect } from "react";
+import { useRouter } from 'next/router';
+
+const CommentThread = () => {
+    const router = useRouter();
+    
+    useEffect(() => {
+        if (window.DISQUS) {
+            window.DISQUS.reset({
+                reload: true,
+                config: function() {
+                    this.page.identifier = router.route;
+                    this.page.url = window.location.href;
+                },
+            });
+        } else {
+            const disqusScript = document.createElement("script");
+            disqusScript.src = "https://anime-adgstudios-co-za.disqus.com/embed.js";
+            disqusScript.setAttribute("data-timestamp", Date.now().toString());
+
+            document.head.appendChild(disqusScript);            
+        }
+        
+        return () => {
+            const disqusThread = document.getElementById("disqus_thread");
+            if (disqusThread) {
+                while (disqusThread.hasChildNodes()) {
+                    disqusThread.removeChild(disqusThread.firstChild);
+                }
+            }
+        };
+    }, [router.route]);
+
+    return (
+        <div id="disqus_thread">
+            <noscript>
+                Please enable JavaScript to view the{" "}
+                <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a>
+            </noscript>
+        </div>
+    );
+};
+
+export default CommentThread;
+```
+
+## How It Works
+
+This code initializes Disqus based on the current route and URL. Here's a breakdown of how it works:
+
+1. We import React, useEffect, and useRouter from Next.js to create a functional component.
+
+2. Inside the `useEffect` hook, we check if `window.DISQUS` is already initialized. If it is, we reset Disqus with the new route and URL. If not, we create a new `script` element and append it to the document, which loads the Disqus embed script.
+
+3. We handle cleanup on unmount by removing Disqus elements from the DOM.
+
+4. Finally, we render a `div` element with the `id` "disqus_thread" where Disqus comments will load. We also include a `<noscript>` section for users with JavaScript disabled.
+
+## Integration
+
+To integrate Disqus into your Next.js website, follow these steps:
+
+1. Create the `CommentThread.js` component as shown above.
+
+2. Import and use the `CommentThread` component wherever you want Disqus comments to appear on your website.
+
+3. Customize your Disqus settings on the Disqus website, such as the site name and identifier. Update the Disqus script URL accordingly.
+
+4. Enjoy interactive comments on your Animeflix Next.js website!
+
+## Conclusion
+
+By porting Disqus to your Next.js website, you enhance user engagement and create a platform for meaningful discussions. This integration allows you to have dynamic comments on your site while leveraging the power of Next.js for a seamless user experience.
+
+Happy coding!
+
+
+
+

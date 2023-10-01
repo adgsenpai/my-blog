@@ -1,0 +1,171 @@
+---
+title: Creating a custom anime video player with Artplayer in Next.js
+date: '2023-10-01'
+tags: ['next.js', 'artplayer', 'animeflix']
+draft: false
+summary: 'In this article, we will create a custom anime video player with Artplayer in Next.js'
+---
+
+
+![Next.js](https://nextjs.org/static/favicon/favicon.ico)
+
+Video streaming has become an integral part of modern web applications, especially for platforms like Animeflix that cater to anime enthusiasts. In this article, we will explore how to create a custom anime video player using Artplayer within a Next.js application. Artplayer is a versatile HTML5 video player that offers various features and plugins to enhance the viewing experience.
+
+## Prerequisites
+
+Before we begin, make sure you have the following:
+
+- A Next.js project set up and running.
+- Familiarity with React and JavaScript.
+- An understanding of video streaming concepts.
+
+## Getting Started with Artplayer
+
+To create our custom anime video player, we will leverage the power of Artplayer. This library allows us to easily integrate and customize a video player within our Next.js application.
+
+First, ensure you have the necessary dependencies installed:
+
+```bash
+npm install artplayer artplayer-plugin-hls-quality hls.js universal-cookie
+```
+
+These packages will enable us to work with Artplayer, handle HLS video streaming, and manage cookies.
+
+## Implementing the Artplayer Component
+
+Now, let's dive into the code. We will create a custom React component that wraps Artplayer and adds some additional functionality tailored to anime streaming.
+
+```jsx
+import React, { useEffect, useRef } from 'react';
+import Artplayer from 'artplayer';
+import artplayerPluginHlsQuality from 'artplayer-plugin-hls-quality';
+import Hls from 'hls.js';
+import Cookies from 'universal-cookie';
+
+const CustomAnimePlayer = ({ option }) => {
+  try {
+    var time2Skip = option.time2skip;
+    var setAutoSkip = false;
+    const artRef = useRef(null);
+    var instance;
+
+    useEffect(() => {
+      // Initialize Hls.js for HLS video playback
+      window.hls = new Hls();
+      
+      // Create an instance of Artplayer with various options
+      instance = new Artplayer({
+        ...option,
+        container: artRef.current,
+        whitelist: ['*'],
+        plugins: [
+          // Plugin for HLS video quality control
+          artplayerPluginHlsQuality({
+            control: false,
+            setting: true,
+            auto: 'Auto',
+            getResolution(level) {
+              // Set the quality label based on the video height
+              if (level.height === -1) {
+                return 'Auto';
+              } else {
+                if (level.height > 720) {
+                  return level.height + 'p' + ' (HD)';
+                }
+                return level.height + 'p';
+              }
+            },
+            title: 'Quality',
+          }),
+        ],
+        // Other Artplayer options such as icons, context menu, etc.
+      });
+
+      // Event handler for video ending
+      instance.on('video:ended', () => {
+        if (option.NextEpisodeNumber) {
+          instance.notice.show = "Next episode >";
+          window.location.href = '?episode=' + option.NextEpisodeNumber;
+        } else {
+          instance.notice.show = "Episode ended.";
+        }
+      }, false);
+
+      // Event handler for video time updates
+      instance.on("video:timeupdate", () => {
+        // Logic for skipping opening and ending based on currentTime
+        // Controls are added to skip the opening and ending sections of the video.
+      });
+
+      // Cleanup function on component unmount
+      return () => {
+        if (instance && instance.destroy) {
+          instance.destroy(false);
+        }
+      };
+    }, [option]);
+
+    // JSX rendering of the component
+    return (
+      <>
+        <div ref={artRef} style={{ width: '100%', height: '100%' }} className='flex items-center justify-center bg-black'></div>
+        <style jsx global>{`
+          .app-skip-btn {
+            background-color: #171717;
+            border-radius: .375rem;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,.1), 0 10px 10px -5px rgba(0,0,0,.04);
+            color: #fff;
+            line-height: 1rem;
+            padding: .5em!important;
+            position: absolute;
+            right: 2%;
+            top: -6.5rem;
+            width: 6rem;
+          }
+        `}</style>
+      </>
+    );
+  } catch (err) {
+    console.log(err);
+    return <div></div>;
+  }
+};
+
+export default CustomAnimePlayer;
+```
+
+## Usage and Customization
+
+Now that we have our `CustomAnimePlayer` component, you can integrate it into your Next.js application wherever you want to display anime videos. To do this, simply import the component and include it in your JSX.
+
+Here's an example of how you might use it:
+
+```jsx
+import React from 'react';
+import CustomAnimePlayer from './CustomAnimePlayer';
+
+const AnimePage = () => {
+  // Define options for the video player
+  const playerOptions = {
+    // Specify video source, poster, and other configurations
+    // ...
+  };
+
+  return (
+    <div>
+      <h1>Anime Episode Title</h1>
+      <CustomAnimePlayer option={playerOptions} />
+    </div>
+  );
+};
+
+export default AnimePage;
+```
+
+## Conclusion
+
+In this article, we've explored how to create a custom anime video player with Artplayer in a Next.js application. This custom player allows you to deliver a seamless anime streaming experience with features like quality control, skipping sections, and more. You can further customize and enhance it to suit your specific requirements.
+
+Now, go ahead and level up your anime streaming platform with this custom player and provide your users with an exceptional viewing experience!
+
+Happy coding!
