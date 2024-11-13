@@ -1,0 +1,330 @@
+---
+title: Building FundSecure A Secure Fundraising Platform with Interledger and DALL.E 3
+date: '2023-10-20'
+tags:
+  - 'Interledger'
+  - 'Hackathon'
+  - 'Fundraising'  
+  - 'OpenAI'
+  - 'Flask'  
+  - 'DALL·E 3'
+draft: false
+summary: 'An overview of FundSecure, a secure fundraising platform developed during the Interledger Hackathon in Cape Town, utilizing the Interledger Protocol and OpenAI’s DALL·E 3 for enhanced functionality.'
+---
+
+# Building FundSecure: A Secure Fundraising Platform with Interledger and DALL·E 3
+
+https://github.com/adgsenpai/FundSecure
+
+[![FundSecure Introduction](https://img.youtube.com/vi/7rTIABujkPk/0.jpg)](https://youtu.be/7rTIABujkPk)
+
+*Click the image to view the video*
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [What is FundSecure?](#what-is-fundsecure)
+- [How the App Works](#how-the-app-works)
+- [OpenAI DALL·E 3 Integration](#openai-dall-e-3-integration)
+- [Architecture](#architecture)
+  - [Component Diagram](#component-diagram)
+  - [Sequence Diagram](#sequence-diagram)
+- [How to Run FundSecure Locally](#how-to-run-fundsecure-locally)
+  - [Prerequisites](#prerequisites)
+  - [Steps](#steps)
+- [Production](#production)
+- [Scripts Explained](#scripts-explained)
+- [Database Schema (Prisma)](#database-schema-prisma)
+- [ILP Express Server (`ilp/server.js`)](#ilp-express-server-ilpserverjs)
+- [Conclusion](#conclusion)
+- [References](#references)
+
+## Introduction
+
+Participating in the **Interledger Hackathon** in Cape Town was an exhilarating experience that brought together innovators and developers passionate about enhancing financial interoperability. Our team embarked on creating **FundSecure**, a fundraising platform designed to facilitate secure and seamless donations using the **Interledger Protocol (ILP)**. Additionally, we integrated **OpenAI's DALL·E 3** to empower users with AI-generated images for their fundraising projects, enhancing the visual appeal and engagement of their initiatives.
+
+## What is FundSecure?
+
+**FundSecure** is a comprehensive fundraising platform that allows users to:
+
+- **Create Projects:** Users can set up fundraising campaigns with detailed descriptions and objectives.
+- **Receive Donations/Tips:** Utilizing the **Interledger Protocol (ILP)**, FundSecure ensures that donations are processed securely and efficiently across different ledgers.
+- **Generate Images:** Leveraging **OpenAI's DALL·E 3**, users can generate unique images to represent their projects, making them more attractive to potential donors.
+- **Secure Transactions:** The platform ensures that all financial transactions are handled securely, maintaining the integrity and trustworthiness of the fundraising process.
+
+FundSecure bridges the gap between users and donors by providing a secure, user-friendly interface backed by robust backend services.
+
+## How the App Works
+
+FundSecure facilitates a smooth and secure fundraising process through the following workflow:
+
+1. **User Interaction:** Users access the platform to create or browse existing fundraising projects.
+2. **Project Creation:** Users can initiate new projects by providing necessary details and generating images using DALL·E 3.
+3. **Donations:** Donors contribute by tipping or donating to projects through secure ILP transactions.
+4. **Payment Processing:** The ILP Express server manages the payment flow, ensuring transactions are swift and secure.
+5. **Data Management:** All project and transaction data are efficiently handled using Prisma ORM connected to a MSSQL database.
+
+This streamlined process ensures that fundraising is both accessible and secure for all participants.
+
+## OpenAI DALL·E 3 Integration
+
+To enhance the visual representation of fundraising projects, FundSecure integrates with **OpenAI's DALL·E 3**. This integration allows users to generate unique, high-quality images tailored to their project's theme and objectives. By providing an intuitive interface for image generation, FundSecure empowers users to create compelling visuals that can attract more donors and increase engagement.
+
+**Key Features:**
+
+- **Custom Image Generation:** Users can describe the image they envision, and DALL·E 3 generates it accordingly.
+- **Enhanced Project Presentation:** High-quality images make projects more appealing and professional.
+- **User-Friendly Interface:** Seamless integration ensures that image generation is straightforward and accessible.
+
+## Architecture
+
+FundSecure's architecture is designed to ensure scalability, security, and seamless integration between various components. Below are detailed diagrams illustrating the system's structure and interactions.
+
+### Component Diagram
+
+![](https://mermaid.ink/svg/pako:eNplkc9ugzAMxl8lyrk97cZhEn81JtgYaJq0wMElpqCSBIUwtar6XLvvyRZgrTbNJ0f-ffFn-0xrxZE6dK9haEmSl5LYcNnriLoi2y1x6xrH0Wb3xGORVtKg5OQJj-axqFbaW7gsJj70_Yr6zIP6MJPhcdD2gxvsz_Bzni5YwDLdjQJ-asFcC8DADkZcgJClRfGS_NZmcBIozdonYnGSXXuQAvXHbNvGKoj-CR5YDk136Mib9Yrmj6kBpRsvg8xkzAI3Sb4-Q3JX0Q0VqAV03K7qPGtKaloUWFLHphwbmHpT0lJeLAqTUcVJ1tQxesIN1Wrat9RpoB_taxo4GAw6sCsXV2QA-a6UuEHIO6N0ut5mOdHlG3MrgqE)
+
+### Sequence Diagram
+
+![](https://mermaid.ink/svg/pako:eNp1lEFu2zAQRa8y4DpGF91pEcCp08KFnbgWigKFNlNxJBORSJUcujGCnKv7nqykKDm21Go1JN7XkP-TfBGlkSQy4einJ13SSmFtsS00hK9Dy6pUHWqGr47sfPajNZpJS0D3Vj_QM3_O5_Adlk8DO5b3z50l5_5F76xyLUZ4t1_n2yU87rdzapvnXzYRSsXqbo6sN7uc7JFsxMJgbAppdi7YY6We1DdsGuKoSWMYJnZ4akmzm-seO9LLdVQM1Wq52fz5fQ_vC53oaOLi9nZ0KoNlWcaVVF5Li8opXUPXIFfGDhGMaFANnmWQ-x-tYpBGIyuj37HqEjwQgU3mBRSPBGxROywjCzbm7DjxiQp4b16g2dhrXBKjatz092dLM1hrxQqZghO9L9BZE_cUtxK-pDzzQXvpbhaW0NNn9VFh-CWTbUjWYziXksV1-w9GV8q2o37a7tK2IThwjOwd-E6GZV_v7CqbB8OqOvWZganA-T6r_wS5T746UC3WBDVpsn06sxjT2cjgU0JoUPxSfLg8MFGV0MWkEXurxwYkk3zSJSjiCjNYKRfO02mKixvRkm1RyXD1X6K4EHyglgqRhVJShb7hQhT6NaDo2eQnXYqMracbYY2vDyKrsHFhlHwc3o3zbLgQ3415G5NU4XBt02PTvzmvfwExv4tH)
+
+## How to Run FundSecure Locally
+
+Setting up FundSecure locally allows developers to explore its functionalities and contribute to its development. Follow the steps below to get FundSecure up and running on your machine.
+
+### Prerequisites
+
+Ensure you have the following installed on your system:
+
+- **Node.js** (v16 or higher)
+- **Docker** (for managing microservices)
+- **MSSQL** (locally or via a cloud database)
+- **Prisma** (ORM for database interactions)
+- **npm** (Node Package Manager)
+
+### Steps
+
+1. **Clone the Repository:**
+
+   Begin by cloning the FundSecure repository from GitHub.
+
+   ```bash
+   git clone https://github.com/ADGSTUDIOS/InterledgerHackathon.git
+   cd InterledgerHackathon
+   ```
+
+2. **Install Dependencies:**
+
+   Install the necessary npm packages for both the main application and the ILP server.
+
+   ```bash
+   npm install
+   cd ilp && npm install
+   ```
+
+3. **Configure Environment Variables:**
+
+   Create a `.env` file in the root directory and populate it with the required environment variables.
+
+   Example `.env` file:
+
+   ```env
+   GOOGLE_CLIENT_ID=your_google_client_id
+   GOOGLE_CLIENT_SECRET=your_google_client_secret
+   NEXTAUTH_SECRET=your_nextauth_secret
+   NEXTAUTH_URL=http://localhost:3000
+   OPENAI_API_KEY=your_openai_api_key
+   ```
+
+   **Note:** Replace the placeholder values with your actual credentials.
+
+4. **Set Up the Database:**
+
+   Use Prisma to push the database schema to your MSSQL database.
+
+   ```bash
+   npx prisma db push
+   ```
+
+5. **Run Docker for Microservices:**
+
+   Start the Docker containers to handle various microservices required by FundSecure.
+
+   ```bash
+   docker-compose up
+   ```
+
+6. **Start the Development Server:**
+
+   Launch the application in development mode.
+
+   ```bash
+   npm run dev
+   ```
+
+7. **Access the Application:**
+
+   Open your browser and navigate to [http://localhost:3000](http://localhost:3000) to interact with FundSecure.
+
+## Production
+
+To deploy FundSecure in a production environment, follow these steps to build and start the application.
+
+1. **Build the Application:**
+
+   Compile the application for production.
+
+   ```bash
+   npm run build
+   ```
+
+2. **Start the Application:**
+
+   Launch the application in production mode.
+
+   ```bash
+   npm start
+   ```
+
+**Note:** For optimal performance and scalability in production, consider using a production-ready server like **Gunicorn**.
+
+## Scripts Explained
+
+FundSecure utilizes several npm scripts to streamline development and deployment processes. Here's a breakdown of the primary scripts defined in the `package.json` file:
+
+```json
+"scripts": {
+  "dev": "prisma generate && concurrently \"next dev\" \"node ilp/server.js\"",
+  "build": "prisma generate && prisma db push && next build",
+  "format:write": "prettier --write \"**/*.{css,js,json,jsx,ts,tsx}\"",
+  "format": "prettier \"**/*.{css,js,json,jsx,ts,tsx}\"",
+  "start": "npm run build && concurrently \"next start\" \"node ilp/server.js\"",
+  "lint": "next lint"
+}
+```
+
+- **dev:** Generates the Prisma client and concurrently runs both the Next.js development server and the ILP Express server.
+- **build:** Generates the Prisma client, pushes the Prisma schema to the database, and builds the Next.js application.
+- **format:write:** Formats the codebase using Prettier and writes the changes.
+- **format:** Checks the code formatting without making changes.
+- **start:** Builds the application and concurrently starts both the Next.js production server and the ILP Express server.
+- **lint:** Runs Next.js's linting tool to identify and fix code issues.
+
+## Database Schema (Prisma)
+
+FundSecure leverages **Prisma ORM** to manage interactions with the MSSQL database. Below is an overview of the primary models used in the application:
+
+```prisma
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String?
+  email         String?   @unique
+  projects      Project[]
+  accounts      Account[]
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Project {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  title        String
+  description  String
+  bannerImage  String
+  markDownCode String
+  tips         Tip[]
+  goal         String
+  deadline     String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Tip {
+  id          Int      @id @default(autoincrement())
+  projectId   Int
+  amount      Float
+  timeStamp   String
+  hash        String   @unique
+  interactRef String
+  createdAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+}
+```
+
+**Model Descriptions:**
+
+- **User:** Represents a user of the platform, storing personal information and related projects.
+- **Project:** Defines a fundraising project created by a user, including details like title, description, and associated tips/donations.
+- **Tip:** Records individual donations or tips made to a project, ensuring each transaction is unique and securely tracked.
+
+## ILP Express Server (`ilp/server.js`)
+
+The **ILP Express Server** is a critical component of FundSecure, handling payment processing via the **Interledger Protocol (ILP)**. It ensures that donations are processed securely and efficiently, bridging different ledgers and facilitating seamless transactions.
+
+### Key Features:
+
+- **Payment Processing:** Manages the flow of funds from donors to project creators using ILP.
+- **Secure Transactions:** Ensures that all financial interactions are encrypted and authenticated.
+- **Integration with Rafiki Wallet:** Utilizes the Rafiki Wallet for managing payments and settlements.
+- **Ledger Management:** Records all transactions in **TigerBeetleDB** for accountability and transparency.
+
+### Core Functionality:
+
+- **`/create-payment` Endpoint:** Initiates new payment requests based on user donations.
+- **Grant Management:** Handles grant allocations and responses to authorize payments.
+- **Error Handling:** Implements robust error logging and handling mechanisms to address any transaction issues promptly.
+
+**Sample Code Snippet:**
+
+```javascript
+const express = require('express');
+const app = express();
+const port = 8001;
+
+app.use(express.json());
+
+app.post('/create-payment', (req, res) => {
+  const { amount, recipient } = req.body;
+  // Logic to process payment via ILP
+  // Interact with Rafiki Wallet and TigerBeetleDB
+  res.status(200).send({ status: 'Payment Initiated' });
+});
+
+app.listen(port, () => {
+  console.log(`ILP Express Server running at http://localhost:${port}`);
+});
+```
+
+**Note:** Ensure that all necessary environment variables and configurations are set up correctly for the ILP server to function seamlessly.
+
+
+## Conclusion
+
+Participating in the **Interledger Hackathon** in Cape Town was a transformative experience that allowed our team to innovate and collaborate on a meaningful project. **FundSecure** stands as a testament to the power of combining cutting-edge technologies like the **Interledger Protocol** and **OpenAI's DALL·E 3** to create a secure and user-friendly fundraising platform. By addressing the challenges of secure donations and enhancing project visibility through AI-generated images, FundSecure offers a comprehensive solution for modern fundraising needs.
+
+This project not only showcases our technical capabilities but also our commitment to leveraging technology for social good. We look forward to further developing FundSecure and exploring additional features to enhance its functionality and reach.
+
+## References
+
+1. **Interledger Protocol (ILP):** [https://interledger.org/](https://interledger.org/)
+2. **OpenAI DALL·E 3:** [https://openai.com/product/dall-e-3](https://openai.com/product/dall-e-3)
+3. **Prisma ORM:** [https://www.prisma.io/](https://www.prisma.io/)
+4. **Flask Documentation:** [https://flask.palletsprojects.com/](https://flask.palletsprojects.com/)
+5. **VirtualBox:** [https://www.virtualbox.org/](https://www.virtualbox.org/)
+6. **Rafiki Wallet:** [https://rafikiwallet.com/](https://rafikiwallet.com/)
+7. **TigerBeetleDB:** [https://tigerbeetle.com/](https://tigerbeetle.com/)
+8. **Next.js Documentation:** [https://nextjs.org/docs](https://nextjs.org/docs)
+ 

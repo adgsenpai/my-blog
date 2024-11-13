@@ -1,0 +1,384 @@
+---
+title: Solving the CORS Streaming Problem A Practical Approach with M3U8 and Flask
+date: '2024-11-13'
+tags:
+  - 'CORS'
+  - 'Streaming'
+  - 'M3U8'
+  - 'Flask'
+  - 'Proxy'
+  - 'Caching'
+  - 'Web Development'
+draft: false
+summary: "An in-depth look at addressing CORS restrictions in M3U8 streaming using a Flask-based proxy solution, complete with practical examples."
+---
+
+# Solving the CORS Streaming Problem: A Practical Approach with M3U8 and Flask
+
+## Introduction
+
+Streaming media content efficiently and securely is a cornerstone of modern web applications. However, developers often encounter challenges related to **Cross-Origin Resource Sharing (CORS)**, especially when dealing with M3U8 playlists in HTTP Live Streaming (HLS). This article explores the CORS streaming problem and presents a practical solution using a Flask-based proxy server to seamlessly stream M3U8 content across different origins.
+
+### GitHub
+
+https://github.com/adgsenpai/m3u8server
+
+## Understanding the CORS Streaming Problem
+
+**CORS** is a security feature implemented in web browsers that restricts web pages from making requests to a different domain than the one that served the web page. While essential for protecting users, CORS can inadvertently block legitimate requests, such as streaming media from external servers.
+
+**M3U8** files are playlists used in HLS to list the media segments (typically `.ts` files) that a client needs to fetch to play streaming content. When these media segments are hosted on a different origin than the web application, CORS policies can prevent the client from accessing them, resulting in playback failures.
+
+### Common Scenarios Leading to CORS Issues
+
+1. **Third-Party Hosting:** Media segments are hosted on external servers that do not permit cross-origin requests.
+2. **Dynamic Content Delivery:** Media segments are served from dynamically generated URLs with varying origins.
+3. **Content Security Policies:** Strict CORS configurations on media servers restrict access from unauthorized origins.
+
+## The Flask-Based Proxy Solution
+
+To overcome CORS restrictions without altering the original media servers, a proxy server can be employed. The proxy modifies M3U8 playlists and streams media segments through a controlled origin that is permitted by CORS policies.
+
+### How It Works
+
+1. **Intercepting Playlist Requests:** The client requests the M3U8 playlist through the proxy server.
+2. **Modifying Playlist URLs:** The proxy server fetches the original M3U8 file, parses it, and rewrites the URLs of the media segments to route through the proxy.
+3. **Serving Modified Playlists:** The client receives the modified M3U8 playlist, ensuring all subsequent media segment requests go through the proxy.
+4. **Handling Media Segments:** When the client requests a media segment, the proxy fetches it from the original server and serves it to the client, adhering to CORS policies.
+
+### Benefits of Using a Proxy
+
+- **Bypasses CORS Restrictions:** Routes all media requests through a single, controlled origin.
+- **Enhances Performance:** Implements caching strategies to reduce latency and server load.
+- **Maintains Security:** Keeps the original media servers untouched, preserving their security configurations.
+
+## Implementation with Flask
+
+Flask, a lightweight Python web framework, is well-suited for creating a proxy server. Below is a simplified overview of the implementation steps.
+
+### Setting Up the Flask Application
+
+1. **Install Dependencies:**
+
+   ```bash
+   pip install Flask requests m3u8 cachetools Flask-CORS
+   ```
+
+2. **Create the Proxy Server:**
+
+   ```python
+   from flask import Flask, request, Response, abort, make_response
+   import requests
+   import m3u8
+   from urllib.parse import urljoin, urlencode
+   from cachetools import TTLCache
+   import threading
+   from flask_cors import CORS
+
+   app = Flask(__name__)
+   CORS(app, resources={r"/proxy": {"origins": "*"}})
+
+   PROXY_BASE_URL = "https://yourdomain.com/proxy"
+
+   # Caches for playlists and segments with a TTL of 5 minutes
+   playlist_cache = TTLCache(maxsize=1000, ttl=300)
+   segment_cache = TTLCache(maxsize=10000, ttl=300)
+   cache_lock = threading.Lock()
+
+   def is_m3u8(url):
+       return url.endswith('.m3u8')
+
+   def get_filename(url):
+       return url.split('/')[-1] or 'file'
+
+   @app.route('/proxy')
+   def proxy():
+       target_url = request.args.get('url')
+       if not target_url:
+           abort(400, description="Missing 'url' parameter.")
+
+       filename = get_filename(target_url)
+
+       if is_m3u8(target_url):
+           with cache_lock:
+               cached_playlist = playlist_cache.get(target_url)
+           if cached_playlist:
+               resp = make_response(cached_playlist)
+               resp.headers['Content-Type'] = 'application/vnd.apple.mpegurl'
+               resp.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+               return resp
+
+           try:
+               response = requests.get(target_url, timeout=10)
+               response.raise_for_status()
+           except requests.RequestException as e:
+               abort(502, description=f"Error fetching the URL: {e}")
+
+           try:
+               playlist = m3u8.loads(response.text)
+           except Exception as e:
+               abort(500, description=f"Error parsing M3U8 file: {e}")
+
+           base_url = response.url
+
+           for segment in playlist.segments:
+               absolute_uri = urljoin(base_url, segment.uri)
+               proxied_uri = f"{PROXY_BASE_URL}?{urlencode({'url': absolute_uri})}"
+               segment.uri = proxied_uri
+
+           if playlist.is_variant:
+               for playlist_variant in playlist.playlists:
+                   original_uri = playlist_variant.uri
+                   absolute_uri = urljoin(base_url, original_uri)
+                   proxied_uri = f"{PROXY_BASE_URL}?{urlencode({'url': absolute_uri})}"
+                   playlist_variant.uri = proxied_uri
+
+           modified_playlist = playlist.dumps()
+
+           with cache_lock:
+               playlist_cache[target_url] = modified_playlist
+
+           resp = make_response(modified_playlist)
+           resp.headers['Content-Type'] = 'application/vnd.apple.mpegurl'
+           resp.headers['Content-Length'] = len(modified_playlist)
+           resp.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+           return resp
+
+       else:
+           with cache_lock:
+               cached_segment = segment_cache.get(target_url)
+           if cached_segment:
+               resp = Response(cached_segment, mimetype='video/MP2T')
+               resp.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+               return resp
+
+           try:
+               response = requests.get(target_url, timeout=10)
+               response.raise_for_status()
+           except requests.RequestException as e:
+               abort(502, description=f"Error fetching the URL: {e}")
+
+           content_type = response.headers.get('Content-Type', '')
+           mime_type = 'video/MP2T' if target_url.endswith('.ts') else (content_type or 'application/octet-stream')
+
+           content = response.content
+
+           with cache_lock:
+               segment_cache[target_url] = content
+
+           resp = Response(content, mimetype=mime_type)
+           resp.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+           resp.headers['Content-Length'] = len(content)
+           return resp
+
+   if __name__ == '__main__':
+       app.run(host='0.0.0.0', port=8000, debug=True)
+   ```
+
+### How the Proxy Server Works
+
+1. **Handling Playlist Requests:**
+   - When the client requests an M3U8 playlist via the proxy, the server checks if the modified playlist is cached.
+   - If cached, it serves the playlist directly from the cache.
+   - If not, it fetches the original playlist, modifies the segment URLs to route through the proxy, caches the modified playlist, and serves it to the client.
+
+2. **Handling Media Segment Requests:**
+   - When the client requests a media segment (e.g., `.ts` file) via the proxy, the server checks if the segment is cached.
+   - If cached, it serves the segment directly from the cache.
+   - If not, it fetches the segment from the original server, caches it, and serves it to the client.
+
+3. **Caching Mechanism:**
+   - **Playlist Cache (`playlist_cache`):** Stores modified M3U8 playlists for 5 minutes to reduce repeated processing.
+   - **Segment Cache (`segment_cache`):** Stores media segments for 5 minutes to minimize redundant network requests.
+
+4. **Thread Safety:**
+   - A threading lock (`cache_lock`) ensures that cache access is thread-safe, preventing race conditions in a multi-threaded environment.
+
+5. **CORS Handling:**
+   - The `Flask-CORS` extension is configured to allow cross-origin requests to the proxy endpoint, ensuring that the client can access the modified playlists and segments without CORS issues.
+
+## Practical Examples
+
+### Original M3U8 Playlist
+
+```m3u8
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:10
+#EXTINF:10.0,
+segment1.ts
+#EXTINF:10.0,
+segment2.ts
+#EXT-X-ENDLIST
+```
+
+### Modified M3U8 Playlist via Proxy
+
+```m3u8
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:10
+#EXTINF:10.0,
+https://yourdomain.com/proxy?url=https%3A%2F%2Foriginalserver.com%2Fsegment1.ts
+#EXTINF:10.0,
+https://yourdomain.com/proxy?url=https%3A%2F%2Foriginalserver.com%2Fsegment2.ts
+#EXT-X-ENDLIST
+```
+
+**Explanation:**
+- The proxy modifies each segment URL to route through `https://yourdomain.com/proxy`, ensuring that all media segment requests comply with CORS policies.
+
+### Caching Example
+
+1. **First Request:**
+   - Client requests the modified playlist via the proxy.
+   - Proxy fetches and modifies the original playlist.
+   - Modified playlist is cached.
+   - Client receives the modified playlist.
+
+2. **Subsequent Requests Within 5 Minutes:**
+   - Client requests the same playlist via the proxy.
+   - Proxy serves the playlist from the cache.
+   - Reduces latency and server load.
+
+## Conclusion
+
+Addressing CORS restrictions in M3U8 streaming is crucial for ensuring seamless media playback across different origins. By implementing a Flask-based proxy server that modifies M3U8 playlists and streams media segments through a controlled origin, developers can effectively bypass CORS limitations without compromising performance or security. This practical approach, complemented by efficient caching mechanisms and thread-safe operations, offers a robust solution to the CORS streaming problem in modern web applications.
+
+## Appendix
+
+### Complete Source Code
+
+```python
+from flask import Flask, request, Response, abort, make_response
+import requests
+import m3u8
+from urllib.parse import urlparse, urljoin, urlencode
+from cachetools import TTLCache
+import threading
+from flask_cors import CORS
+
+app = Flask(__name__)
+
+# Enable CORS for all routes and origins
+CORS(app, resources={r"/proxy": {"origins": "*"}})
+
+# Configuration
+PROXY_BASE_URL = "https://yourdomain.com/proxy"
+
+# Create a cache with a Time-To-Live (TTL) of 5 minutes for playlists and segments
+playlist_cache = TTLCache(maxsize=1000, ttl=300)  # 5 minutes TTL
+segment_cache = TTLCache(maxsize=10000, ttl=300)   # 5 minutes TTL
+
+# Lock for thread-safe cache access
+cache_lock = threading.Lock()
+
+# Helper function to determine if the URL points to an M3U8 file
+def is_m3u8(url):
+    return url.endswith('.m3u8')
+
+# Helper function to extract filename from URL
+def get_filename(url):
+    return url.split('/')[-1] or 'file'
+
+@app.route('/proxy')
+def proxy():
+    target_url = request.args.get('url')
+    if not target_url:
+        abort(400, description="Missing 'url' parameter.")
+
+    filename = get_filename(target_url)
+
+    if is_m3u8(target_url):
+        with cache_lock:
+            cached_playlist = playlist_cache.get(target_url)
+        if cached_playlist:
+            resp = make_response(cached_playlist)
+            resp.headers['Content-Type'] = 'application/vnd.apple.mpegurl'
+            resp.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+            return resp
+
+        try:
+            # Fetch the M3U8 playlist
+            response = requests.get(target_url, timeout=10)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            abort(502, description=f"Error fetching the URL: {e}")
+
+        try:
+            # Parse the M3U8 playlist
+            playlist = m3u8.loads(response.text)
+        except Exception as e:
+            abort(500, description=f"Error parsing M3U8 file: {e}")
+
+        base_url = response.url  # Final URL after redirects
+
+        # Modify each segment URI to route through the proxy
+        for segment in playlist.segments:
+            absolute_uri = urljoin(base_url, segment.uri)
+            proxied_uri = f"{PROXY_BASE_URL}?{urlencode({'url': absolute_uri})}"
+            segment.uri = proxied_uri
+
+        # Handle variant playlists if present
+        if playlist.is_variant:
+            for playlist_variant in playlist.playlists:
+                original_uri = playlist_variant.uri
+                absolute_uri = urljoin(base_url, original_uri)
+                proxied_uri = f"{PROXY_BASE_URL}?{urlencode({'url': absolute_uri})}"
+                playlist_variant.uri = proxied_uri
+
+        # Serialize the modified playlist
+        modified_playlist = playlist.dumps()
+
+        # Cache the modified playlist
+        with cache_lock:
+            playlist_cache[target_url] = modified_playlist
+
+        resp = make_response(modified_playlist)
+        resp.headers['Content-Type'] = 'application/vnd.apple.mpegurl'
+        resp.headers['Content-Length'] = len(modified_playlist)
+        resp.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+        return resp
+
+    else:
+        with cache_lock:
+            cached_segment = segment_cache.get(target_url)
+        if cached_segment:
+            resp = Response(cached_segment, mimetype='video/MP2T')
+            resp.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+            return resp
+
+        try:
+            # Fetch the media segment
+            response = requests.get(target_url, timeout=10)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            abort(502, description=f"Error fetching the URL: {e}")
+
+        content_type = response.headers.get('Content-Type', '')
+        mime_type = 'video/MP2T' if target_url.endswith('.ts') else (content_type or 'application/octet-stream')
+
+        content = response.content
+
+        with cache_lock:
+            segment_cache[target_url] = content
+
+        resp = Response(content, mimetype=mime_type)
+        resp.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+        resp.headers['Content-Length'] = len(content)
+        return resp
+
+if __name__ == '__main__':
+    # Run the Flask app
+    # For production, consider using a production-ready server like Gunicorn
+    app.run(host='0.0.0.0', port=8000, debug=True)
+```
+
+## References
+
+1. **W3C.** (2014). Cross-Origin Resource Sharing (CORS). [https://www.w3.org/TR/cors/](https://www.w3.org/TR/cors/)
+2. **Apple Inc.** (2017). HTTP Live Streaming. [https://developer.apple.com/streaming/](https://developer.apple.com/streaming/)
+3. **Cachetools Documentation.** [https://cachetools.readthedocs.io/en/stable/](https://cachetools.readthedocs.io/en/stable/)
+4. **Flask Documentation.** [https://flask.palletsprojects.com/](https://flask.palletsprojects.com/)
+5. **Gunicorn Documentation.** [https://gunicorn.org/](https://gunicorn.org/)
+
